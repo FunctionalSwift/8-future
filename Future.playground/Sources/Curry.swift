@@ -1,4 +1,8 @@
 
+public func curry<A, B, C, D, E, F, G>(_ fn: @escaping (A, B, C, D, E, F) -> G) -> (A) -> (B) -> (C) -> (D) -> (E) -> (F) -> G {
+    return { a in { b in { c in { d in { e in { f in fn(a, b, c, d, e, f) } } } } } }
+}
+
 public func curry<A, B, C, D, E, F>(
     _ fn: @escaping (A, B, C, D, E) -> F) -> (A) -> (B) -> (C) -> (D) -> (E) -> F {
     
