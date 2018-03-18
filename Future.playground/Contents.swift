@@ -21,3 +21,9 @@ struct Future<A> {
         return Future(task: task)
     }
 }
+
+let future = Future.async { 23 + 19 }
+
+future.task(DispatchQueue.global()) { number in
+    print(number) // 42
+}
