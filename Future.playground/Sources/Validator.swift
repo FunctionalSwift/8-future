@@ -1,6 +1,7 @@
 import Foundation
 
-public typealias Validator<A, E> = (A) -> Future<Result<A, E>>
+public typealias AsyncResult<A, E> = Future<Result<A, E>>
+public typealias Validator<A, E> = (A) -> AsyncResult<A, E>
 
 public func validate<A, E>(_ reason: E, _ condition: @escaping (A) -> Bool) -> Validator<A, E> {
     return { Future.async(condition($0) ? .success($0) : .failure(reason)) }

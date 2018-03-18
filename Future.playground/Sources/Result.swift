@@ -1,3 +1,5 @@
+import Foundation
+
 public enum Result<A, E> {
     case success(_: A)
     case failure(_: E)
@@ -33,14 +35,43 @@ extension Result {
 infix operator <%>: AdditionPrecedence
 infix operator <*>: AdditionPrecedence
 
-public func <%><A, B>(_ transform: @escaping (A) -> B, futureA: Future<A>) -> Future<B> {
-    return futureA.map(transform)
+public func <%><A, B, E>(_ transform: @escaping (A) -> B, asyncResultA: AsyncResult<A, E>) -> AsyncResult<B, E> {
+    return asyncResultA.map { result in
+        result.map(transform)
+    }
 }
 
-public func <*><A, B>(_ curriedFuture: Future<(A) -> B>, futureA: Future<A>) -> Future<B> {
-    return futureA.apply(curriedFuture)
+public func <*><A, B, E>(_ asyncResultAB: AsyncResult<(A) -> B, E>, asyncResultA: AsyncResult<A, E>) -> AsyncResult<B, E> {
+    let task: Task<Result<B, E>> = { (queue, _, continuation) in
+        let group = DispatchGroup()
+        
+        var resultA: (Result<A, E>)?
+        var resultAB: (Result<(A) -> B, E>)?
+        
+        asyncResultA.task(queue, group) { x in
+            resultA = x
+        }
+        
+        asyncResultAB.task(queue, group) { x in
+            resultAB = x
+        }
+        
+        group.wait()
+        
+        continuation(resultA!.apply(resultAB!))
+    }
+    
+    return Future(task: task)
 }
 
-public func >>=<A, B>(_ futureA: Future<A>, transform: @escaping (A) -> Future<B>) -> Future<B> {
-    return futureA.flatMap(transform)
+public func >>=<A, B, E>(_ asyncResultA: AsyncResult<A, E>, transform: @escaping (A) -> AsyncResult<B, E>) -> AsyncResult<B, E> {
+    return asyncResultA.flatMap { resultA in
+        switch resultA {
+        case let .success(a):
+            return transform(a)
+        case let .failure(reason):
+            return Future.pure(.failure(reason))
+        }
+    }
 }
+
