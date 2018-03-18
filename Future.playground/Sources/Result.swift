@@ -42,26 +42,9 @@ public func <%><A, B, E>(_ transform: @escaping (A) -> B, asyncResultA: AsyncRes
 }
 
 public func <*><A, B, E>(_ asyncResultAB: AsyncResult<(A) -> B, E>, asyncResultA: AsyncResult<A, E>) -> AsyncResult<B, E> {
-    let task: Task<Result<B, E>> = { (queue, _, continuation) in
-        let group = DispatchGroup()
-        
-        var resultA: (Result<A, E>)?
-        var resultAB: (Result<(A) -> B, E>)?
-        
-        asyncResultA.task(queue, group) { x in
-            resultA = x
-        }
-        
-        asyncResultAB.task(queue, group) { x in
-            resultAB = x
-        }
-        
-        group.wait()
-        
-        continuation(resultA!.apply(resultAB!))
+    return asyncResultA.map2(asyncResultAB) { (resultA, resultAB) in
+        resultA.apply(resultAB)
     }
-    
-    return Future(task: task)
 }
 
 public func >>=<A, B, E>(_ asyncResultA: AsyncResult<A, E>, transform: @escaping (A) -> AsyncResult<B, E>) -> AsyncResult<B, E> {
