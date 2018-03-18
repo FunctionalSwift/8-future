@@ -9,11 +9,21 @@ typealias Task<A> = (DispatchQueue, @escaping (A) -> ()) -> ()
 
 struct Future<A> {
     
+    typealias Task<A> = (DispatchQueue, DispatchGroup, @escaping (A) -> ()) -> ()
+    
     let task: Task<A>
     
+    static func pure(_ value: A) -> Future<A> {
+        let task: Task = { (_, _, continuation) in
+            continuation(value)
+        }
+        
+        return Future(task: task)
+    }
+    
     static func async(_ getValue: @autoclosure @escaping () -> A) -> Future<A> {
-        let task: Task = { (queue, continuation) in
-            queue.async {
+        let task: Task = { (queue, group, continuation) in
+            queue.async(group: group) {
                 continuation(getValue())
             }
         }
@@ -21,13 +31,9 @@ struct Future<A> {
         return Future(task: task)
     }
     
-    func runAsync(_ queue: DispatchQueue = DispatchQueue.global(), _ continuation: @escaping (A) -> ()) {
-        self.task(queue, continuation)
-    }
-    
     func map<B>(_ transform: @escaping (A) -> B) -> Future<B> {
         return self.flatMap { a in
-            let task: Task<B> = { (queue, continuation) in
+            let task: Task<B> = { (_, _, continuation) in
                 continuation(transform(a))
             }
             
@@ -36,15 +42,42 @@ struct Future<A> {
     }
     
     func flatMap<B>(_ transform: @escaping (A) -> Future<B>) -> Future<B> {
-        let task: Task<B> = { (queue, continuation) in
-            self.task(queue) { a in
+        let task: Task<B> = { (queue, group, continuation) in
+            self.task(queue, group) { a in
                 let futureB = transform(a)
                 
-                futureB.task(queue, continuation)
+                futureB.task(queue, group, continuation)
             }
         }
         
         return Future<B>(task: task)
+    }
+    
+    func apply<B>(_ futureAB: Future<(A) -> B>) -> Future<B> {
+        let task: Task<B> = { (queue, _, continuation) in
+            let group = DispatchGroup()
+            
+            var a: A?
+            var ab: ((A) -> B)?
+            
+            self.task(queue, group) { value in
+                a = value
+            }
+            
+            futureAB.task(queue, group) { value in
+                ab = value
+            }
+            
+            group.wait()
+            
+            continuation(ab!(a!))
+        }
+        
+        return Future<B>(task: task)
+    }
+    
+    func runAsync(_ queue: DispatchQueue = DispatchQueue.global(), _ continuation: @escaping (A) -> ()) {
+        self.task(queue, DispatchGroup(), continuation)
     }
 }
 
