@@ -99,3 +99,10 @@ struct Author {
     }
 }
 
+Post.get(1)
+    .flatMap { post in
+        Author.get(post.authorId)
+    }
+    .runAsync { author in
+        print(author) // Author(firstname: "Luke", lastName: "Skywalker")
+}
