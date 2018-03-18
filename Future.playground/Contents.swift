@@ -15,4 +15,5 @@ func createUser(name: String, password: String, premium: Bool, newsletter: Bool)
 }
 
 createUser(name: "alex", password: "functionalswift", premium: true, newsletter: true)
+    .runSync()
     .map { print($0) }
