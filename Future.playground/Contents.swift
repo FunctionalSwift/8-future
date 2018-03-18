@@ -7,7 +7,7 @@ PlaygroundPage.current.needsIndefiniteExecution = true
 
 func createUser(name: String, password: String, premium: Bool, newsletter: Bool, birthday: Date, email: String) -> AsyncResult<User, UserError> {
     return curry(User.init)
-        <%> Validators.Name(name)
+        <%> (Validators.Name && Validators.IsNameAvailable)(name)
         <*> Validators.Password(password)
         <*> Future.pure(Result.pure(newsletter))
         <*> Future.pure(Result.pure(premium))
@@ -21,3 +21,5 @@ let birthday = Date(timeIntervalSince1970: 42)
 createUser(name: "alex", password: "functionalswift", premium: true, newsletter: true, birthday: birthday, email: "alex.swift@swiftfuncional.com")
     .runSync()
     .map { print($0) }
+
+

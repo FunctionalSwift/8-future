@@ -42,6 +42,7 @@ public enum UserError {
     case mustAcceptNewsletter
     case mustBeAdult
     case wrongEmail
+    case nameNotAvailable
 }
 
 public class UserValidator {
@@ -61,21 +62,18 @@ public class UserValidator {
 
 public class Validators {
     public class var Name: Validator<String, UserError> {
-        randomDelay(field: "Name")
         return validate(.userNameOutOfBounds) {
             !$0.isEmpty && $0.count <= 15
         }
     }
     
     public class var Password: Validator<String, UserError> {
-        randomDelay(field: "Password")
         return validate(.passwordTooShort) {
             $0.count > 10
         }
     }
     
     public class var Adult: Validator<Date, UserError> {
-        randomDelay(field: "Adult")
         return validate(.mustBeAdult) {
             guard let years = Calendar.current.dateComponents([.year], from: $0, to: Date()).year else { return false }
             return years >= 18
@@ -83,18 +81,27 @@ public class Validators {
     }
     
     public class var Email: Validator<String, UserError> {
-        randomDelay(field: "Email")
         return validate(.wrongEmail) {
             let regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}"
             let predicate = NSPredicate(format:"SELF MATCHES %@", regex)
             return predicate.evaluate(with: $0)
         }
     }
+    
+    public class var IsNameAvailable: Validator<String, UserError> {
+        return validate(.nameNotAvailable) {
+            print("Validating field Name in server...")
+            let result = parse(from: "http://swiftfuncional.com/exercises/is-name-available?q=\($0)")["result"]?.boolValue ?? false
+            print("Field Name validated in server.")
+            
+            return result
+        }
+    }
 }
 
-func randomDelay(field: String) {
-    print("Validating \(field)")
-    let x = arc4random_uniform(5)
-    sleep(x)
-    print("\(field) validated. \(x) seconds waited.")
+func parse(from url: String) -> [String: AnyObject] {
+    return URL(string: url)
+        .flatMap { try! Data(contentsOf: $0) }
+        .flatMap { try! JSONSerialization.jsonObject(with: $0) }
+        .flatMap { $0 as? [String: AnyObject] }!
 }
