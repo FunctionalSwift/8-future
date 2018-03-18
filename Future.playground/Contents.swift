@@ -113,6 +113,9 @@ struct Post {
     let title: String
     let content: String
     let authorId: Int
+    var wordCount: Int {
+        return content.components(separatedBy: " ").count
+    }
     
     static func decode(_ json: [String: AnyObject]) -> Post {
         let title = json["title"] as! String
@@ -124,7 +127,7 @@ struct Post {
     
     static func get(_ id: Int) -> Future<Post> {
         return Future.async(
-            Post.decode(parse(from: "http://functionalHub.com/exercises/posts/\(id)")))
+            Post.decode(parse(from: "http://swiftfuncional.com/exercises/posts/\(id)")))
     }
 }
 
@@ -132,6 +135,9 @@ struct Author {
     let firstname: String
     let lastName: String
     let lastPostId: Int
+    var lastPost: Future<Post> {
+        return Post.get(lastPostId)
+    }
     
     static func decode(_ json: [String: AnyObject]) -> Author {
         let firstName = json["firstName"] as! String
@@ -143,13 +149,13 @@ struct Author {
     
     static func get(_ id: Int) -> Future<Author> {
         return Future.async(
-            Author.decode(parse(from: "http://functionalHub.com/exercises/users/\(id)"
+            Author.decode(parse(from: "http://swiftfuncional.com/exercises/users/\(id)"
         )))
     }
 }
 
 func topFive() -> Future<[Int]> {
-    return Future.async(parse(from: "http://functionalHub.com/exercises/top-users"))
+    return Future.async(parse(from: "http://swiftfuncional.com/exercises/top-users"))
         .map { json in
             json.map { Int($0.1 as! String)! }
     }
@@ -159,13 +165,17 @@ func average(first: Int, second: Int, third: Int, fourth: Int, fifth: Int) -> In
     return (first + second + third + fourth + fifth) / 5
 }
 
+func lastPostWordCount(of userId: Int) -> Future<Int> {
+    return Author.get(userId).flatMap { $0.lastPost }.map { $0.wordCount }
+}
+
 topFive().flatMap { topFive in
-    curry(average)
-        <%> Author.get(topFive[0]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
-        <*> Author.get(topFive[1]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
-        <*> Author.get(topFive[2]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
-        <*> Author.get(topFive[3]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
-        <*> Author.get(topFive[4]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
+    return curry(average)
+        <%> lastPostWordCount(of: topFive[0])
+        <*> lastPostWordCount(of: topFive[1])
+        <*> lastPostWordCount(of: topFive[2])
+        <*> lastPostWordCount(of: topFive[3])
+        <*> lastPostWordCount(of: topFive[4])
     }.runAsync { average in
         print(average)
 }
