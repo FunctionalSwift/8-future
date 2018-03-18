@@ -79,6 +79,21 @@ struct Future<A> {
     func runAsync(_ queue: DispatchQueue = DispatchQueue.global(), _ continuation: @escaping (A) -> ()) {
         self.task(queue, DispatchGroup(), continuation)
     }
+    
+    func runSync() -> A {
+        let queue = DispatchQueue.global()
+        let group = DispatchGroup()
+        
+        var a: A?
+        
+        self.task(queue, group) { value in
+            a = value
+        }
+        
+        group.wait()
+        
+        return a!
+    }
 }
 
 infix operator <%>: AdditionPrecedence
@@ -169,13 +184,13 @@ func lastPostWordCount(of userId: Int) -> Future<Int> {
     return Author.get(userId).flatMap { $0.lastPost }.map { $0.wordCount }
 }
 
-topFive().flatMap { topFive in
+let averageValue = topFive().flatMap { topFive in
     return curry(average)
         <%> lastPostWordCount(of: topFive[0])
         <*> lastPostWordCount(of: topFive[1])
         <*> lastPostWordCount(of: topFive[2])
         <*> lastPostWordCount(of: topFive[3])
         <*> lastPostWordCount(of: topFive[4])
-    }.runAsync { average in
-        print(average)
-}
+    }.runSync()
+
+print(averageValue)
