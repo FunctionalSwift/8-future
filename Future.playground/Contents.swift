@@ -24,9 +24,22 @@ struct Future<A> {
     func runAsync(_ queue: DispatchQueue = DispatchQueue.global(), _ continuation: @escaping (A) -> ()) {
         self.task(queue, continuation)
     }
+    
+    func map<B>(_ transform: @escaping (A) -> B) -> Future<B> {
+        let task: Task<B> = { (queue, continuation) in
+            self.task(queue) { a in
+                let b = transform(a)
+                
+                continuation(b)
+            }
+        }
+        
+        return Future<B>(task: task)
+    }
 }
 
-Future.async { 23 + 19 }
+Future.async({ 23 + 19 })
+    .map { $0 + 3 }
     .runAsync { number in
-        print(number) // 42
+        print(number)
 }
