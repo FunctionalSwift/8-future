@@ -26,11 +26,21 @@ struct Future<A> {
     }
     
     func map<B>(_ transform: @escaping (A) -> B) -> Future<B> {
+        return self.flatMap { a in
+            let task: Task<B> = { (queue, continuation) in
+                continuation(transform(a))
+            }
+            
+            return Future<B>(task: task)
+        }
+    }
+    
+    func flatMap<B>(_ transform: @escaping (A) -> Future<B>) -> Future<B> {
         let task: Task<B> = { (queue, continuation) in
             self.task(queue) { a in
-                let b = transform(a)
+                let futureB = transform(a)
                 
-                continuation(b)
+                futureB.task(queue, continuation)
             }
         }
         
