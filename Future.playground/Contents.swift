@@ -11,7 +11,7 @@ struct Future<A> {
     
     let task: Task<A>
     
-    static func async(_ getValue: @escaping () -> A) -> Future<A> {
+    static func async(_ getValue: @autoclosure @escaping () -> A) -> Future<A> {
         let task: Task = { (queue, continuation) in
             queue.async {
                 continuation(getValue())
@@ -69,12 +69,8 @@ struct Post {
     }
     
     static func get(_ id: Int) -> Future<Post> {
-        return Future.async {
-            let json = parse(from: "http://functionalhub.com/exercises/posts/\(id)"
-            )
-            
-            return Post.decode(json)
-        }
+        return Future.async(
+            Post.decode(parse(from: "http://functionalhub.com/exercises/posts/\(id)")))
     }
 }
 
@@ -90,12 +86,9 @@ struct Author {
     }
     
     static func get(_ id: Int) -> Future<Author> {
-        return Future.async {
-            let json = parse(from: "http://functionalhub.com/exercises/users/\(id)"
-            )
-            
-            return Author.decode(json)
-        }
+        return Future.async(
+            Author.decode(parse(from: "http://functionalhub.com/exercises/users/\(id)"
+            )))
     }
 }
 
