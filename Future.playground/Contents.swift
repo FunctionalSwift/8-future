@@ -7,11 +7,11 @@ PlaygroundPage.current.needsIndefiniteExecution = true
 
 struct Future<A> {
     
-    let task: (@escaping (A) -> ()) -> ()
+    let task: (DispatchQueue, @escaping (A) -> ()) -> ()
     
     static func async(_ getValue: @escaping () -> A) -> Future<A> {
-        let task: (@escaping (A) -> ()) -> () = { continuation in
-            DispatchQueue.global().async {
+        let task: (DispatchQueue, @escaping (A) -> ()) -> () = { (queue, continuation) in
+            queue.async {
                 continuation(getValue())
             }
         }
