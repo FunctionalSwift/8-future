@@ -6,17 +6,16 @@ import PlaygroundSupport
 PlaygroundPage.current.needsIndefiniteExecution = true
 
 struct Future<A> {
+    
     let task: (@escaping (A) -> ()) -> ()
-}
-
-let getNumber = {
-    return 23 + 26
-}
-
-let task: (@escaping (Int) -> ()) -> () = { continuation in
-    DispatchQueue.global().async {
-        continuation(getNumber())
+    
+    static func async(_ getValue: @escaping () -> A) -> Future<A> {
+        let task: (@escaping (A) -> ()) -> () = { continuation in
+            DispatchQueue.global().async {
+                continuation(getValue())
+            }
+        }
+        
+        return Future(task: task)
     }
 }
-
-Future(task: task)
