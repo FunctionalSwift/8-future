@@ -81,6 +81,27 @@ struct Future<A> {
     }
 }
 
+infix operator <%>: AdditionPrecedence
+infix operator <*>: AdditionPrecedence
+
+func <%><A, B>(_ transform: @escaping (A) -> B, futureA: Future<A>) -> Future<B> {
+    return futureA.map(transform)
+}
+
+func <*><A, B>(_ curriedFuture: Future<(A) -> B>, futureA: Future<A>) -> Future<B> {
+    return futureA.apply(curriedFuture)
+}
+
+func >>=<A, B>(_ futureA: Future<A>, transform: @escaping (A) -> Future<B>) -> Future<B> {
+    return futureA.flatMap(transform)
+}
+
+public func curry<A, B, C, D, E, F>(
+    _ fn: @escaping (A, B, C, D, E) -> F) -> (A) -> (B) -> (C) -> (D) -> (E) -> F {
+    
+    return { a in { b in { c in { d in { e in fn(a, b, c, d, e) } } } } }
+}
+
 func parse(from url: String) -> [String: AnyObject] {
     return URL(string: url)
         .flatMap { try! Data(contentsOf: $0) }
@@ -103,32 +124,48 @@ struct Post {
     
     static func get(_ id: Int) -> Future<Post> {
         return Future.async(
-            Post.decode(parse(from: "http://functionalhub.com/exercises/posts/\(id)")))
+            Post.decode(parse(from: "http://functionalHub.com/exercises/posts/\(id)")))
     }
 }
 
 struct Author {
     let firstname: String
     let lastName: String
+    let lastPostId: Int
     
     static func decode(_ json: [String: AnyObject]) -> Author {
         let firstName = json["firstName"] as! String
         let lastName = json["lastName"] as! String
+        let lastPostId = json["lastPost"] as! Int
         
-        return Author(firstname: firstName, lastName: lastName)
+        return Author(firstname: firstName, lastName: lastName, lastPostId: lastPostId)
     }
     
     static func get(_ id: Int) -> Future<Author> {
         return Future.async(
-            Author.decode(parse(from: "http://functionalhub.com/exercises/users/\(id)"
-            )))
+            Author.decode(parse(from: "http://functionalHub.com/exercises/users/\(id)"
+        )))
     }
 }
 
-Post.get(1)
-    .flatMap { post in
-        Author.get(post.authorId)
+func topFive() -> Future<[Int]> {
+    return Future.async(parse(from: "http://functionalHub.com/exercises/top-users"))
+        .map { json in
+            json.map { Int($0.1 as! String)! }
     }
-    .runAsync { author in
-        print(author) // Author(firstname: "Luke", lastName: "Skywalker")
+}
+
+func average(first: Int, second: Int, third: Int, fourth: Int, fifth: Int) -> Int {
+    return (first + second + third + fourth + fifth) / 5
+}
+
+topFive().flatMap { topFive in
+    curry(average)
+        <%> Author.get(topFive[0]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
+        <*> Author.get(topFive[1]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
+        <*> Author.get(topFive[2]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
+        <*> Author.get(topFive[3]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
+        <*> Author.get(topFive[4]).flatMap { Post.get($0.lastPostId) }.map { $0.content.components(separatedBy: " ").count }
+    }.runAsync { average in
+        print(average)
 }
